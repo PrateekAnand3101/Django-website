@@ -23,10 +23,15 @@ jobs:
       - name: Verify AWS CLI installation
         run: aws --version
 
-      - name: Verify AWS credentials from instance role
+      - name: Configure AWS credentials directly in the YAML
         run: |
-          echo "Verifying AWS credentials using EC2 instance role"
-          aws sts get-caller-identity
+          echo "Configuring AWS credentials"
+          aws configure set aws_access_key_id "AKIAU72LGF4YC6F6GQDC"
+          aws configure set aws_secret_access_key "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"
+          aws configure set region ${{ env.AWS_REGION }}
+
+      - name: Verify AWS credentials from configured AWS CLI
+        run: aws sts get-caller-identity
 
       - name: Get instance public IP
         id: get-instance-ip
@@ -36,12 +41,12 @@ jobs:
             --query 'Reservations[*].Instances[*].[PublicIpAddress]' \
             --output text)
           echo "PUBLIC_IP=${PUBLIC_IP}" >> $GITHUB_ENV
-          echo "public_ip=${PUBLIC_IP}" # Updated output method
+          echo "public_ip=${PUBLIC_IP}"
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ env.PUBLIC_IP }} # Accessing public IP from environment variable
+          host: ${{ env.PUBLIC_IP }}
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
