@@ -24,7 +24,9 @@ jobs:
         run: aws --version
 
       - name: Verify AWS credentials from instance role
-        run: aws sts get-caller-identity
+        run: |
+          echo "Verifying AWS credentials using EC2 instance role"
+          aws sts get-caller-identity
 
       - name: Get instance public IP
         id: get-instance-ip
@@ -34,12 +36,12 @@ jobs:
             --query 'Reservations[*].Instances[*].[PublicIpAddress]' \
             --output text)
           echo "PUBLIC_IP=${PUBLIC_IP}" >> $GITHUB_ENV
-          echo "::set-output name=public_ip::${PUBLIC_IP}"
+          echo "public_ip=${PUBLIC_IP}" # Updated output method
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ steps.get-instance-ip.outputs.public_ip }}
+          host: ${{ env.PUBLIC_IP }} # Accessing public IP from environment variable
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
