@@ -23,11 +23,11 @@ jobs:
       - name: Verify AWS CLI installation
         run: aws --version
 
-      - name: Configure AWS credentials directly in the YAML
+      - name: Configure AWS credentials
         run: |
-          echo "Configuring AWS credentials"
-          aws configure set aws_access_key_id "AKIAU72LGF4YC6F6GQDC"
-          aws configure set aws_secret_access_key "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"
+          echo "Configuring AWS credentials using GitHub Secrets"
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ${{ env.AWS_REGION }}
 
       - name: Verify AWS credentials from configured AWS CLI
@@ -37,7 +37,7 @@ jobs:
         id: get-instance-ip
         run: |
           PUBLIC_IP=$(aws ec2 describe-instances \
-            --instance-id "i-0671bebccbdd2630a" \
+            --instance-id "i-0671beccbd2630a" \
             --query 'Reservations[*].Instances[*].[PublicIpAddress]' \
             --output text)
           echo "PUBLIC_IP=${PUBLIC_IP}" >> $GITHUB_ENV
