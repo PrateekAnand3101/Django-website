@@ -25,9 +25,9 @@ jobs:
 
       - name: Get instance public IP
         id: get-instance-ip
-        uses: aws-actions/aws-cli@latest
-        with:
-          args: ec2 describe-instances --instance-id ${{ env.EC2_INSTANCE_ID }} --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text
+        run: |
+          aws ec2 describe-instances --instance-id ${env.EC2_INSTANCE_ID} --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text
+          echo "PUBLIC_IP=$?" >> $GITHUB_OUTPUT
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
