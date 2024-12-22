@@ -56,6 +56,15 @@ jobs:
             sudo systemctl start docker
             sudo systemctl enable docker
 
+            # Add the ubuntu user to the Docker group
+            sudo usermod -aG docker ubuntu
+
+            # Restart Docker service (optional but recommended)
+            sudo systemctl restart docker
+
+            # Check Docker service status
+            sudo systemctl status docker
+
             # Set up application directory and clone repository
             mkdir -p /home/ubuntu/app
             git clone https://github.com/PrateekAnand3101/Django-website /home/ubuntu/app
