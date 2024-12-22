@@ -37,7 +37,7 @@ jobs:
         id: get-instance-ip
         run: |
           PUBLIC_IP=$(aws ec2 describe-instances \
-            --instance-id "i-0671beccbd2630a" \
+            --instance-id "i-0671bebccbdd2630a" \
             --query 'Reservations[*].Instances[*].[PublicIpAddress]' \
             --output text)
           echo "PUBLIC_IP=${PUBLIC_IP}" >> $GITHUB_ENV
@@ -50,21 +50,6 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Update system and install Docker
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo systemctl start docker
-            sudo systemctl enable docker
-
-            # Add the ubuntu user to the Docker group
-            sudo usermod -aG docker ubuntu
-
-            # Restart Docker service (optional but recommended)
-            sudo systemctl restart docker
-
-            # Check Docker service status
-            sudo systemctl status docker
-
             # Set up application directory and clone repository
             mkdir -p /home/ubuntu/app
             git clone https://github.com/PrateekAnand3101/Django-website /home/ubuntu/app
@@ -80,7 +65,3 @@ jobs:
         run: |
           docker stop django-website || true
           docker rm django-website || true
-
-      - name: Verify deployment
-        run: |
-          curl http://localhost:8000
