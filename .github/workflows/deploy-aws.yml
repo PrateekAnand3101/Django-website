@@ -19,20 +19,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Verify AWS CLI installation
-        run: aws --version
-
       - name: Configure AWS credentials
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          EC2_INSTANCE_ID: ${{ env.EC2_INSTANCE_ID }}
         run: |
-          echo "Configuring AWS credentials using GitHub Secrets"
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region ${{ env.AWS_REGION }}
-
-      - name: Verify AWS credentials from configured AWS CLI
+          export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          echo "AWS_REGION=${{ env.AWS_REGION }}" >> $GITHUB_ENV
+          echo "EC2_INSTANCE_ID=${{ env.EC2_INSTANCE_ID }}" >> $GITHUB_ENV
+      - name: Verify AWS credentials
         run: aws sts get-caller-identity
-
       - name: Get instance public IP
         id: get-instance-ip
         run: |
@@ -41,8 +38,7 @@ jobs:
             --query 'Reservations[*].Instances[*].[PublicIpAddress]' \
             --output text)
           echo "PUBLIC_IP=${PUBLIC_IP}" >> $GITHUB_ENV
-          echo "public_ip=${PUBLIC_IP}"
-
+          echo "::set-output name=public_ip::${PUBLIC_IP}"
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
@@ -50,23 +46,17 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Update system and install Docker
             sudo apt-get update
             sudo apt-get install -y docker.io
             sudo systemctl start docker
             sudo systemctl enable docker
-
-            # Set up application directory and clone repository
             mkdir -p /home/ubuntu/app
             git clone https://github.com/PrateekAnand3101/Django-website /home/ubuntu/app
-
-            # Build and run Docker container
             cd /home/ubuntu/app
             docker build -t django-website .
             docker stop django-website || true
             docker rm django-website || true
             docker run -d --name django-website -p 8000:8000 django-website
-
       - name: Clean up
         run: |
           docker stop django-website || true
