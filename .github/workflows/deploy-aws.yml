@@ -1,18 +1,14 @@
 name: Deploy to Amazon EC2
-
 on:
   push:
     branches:
       - main
-
 env:
   AWS_REGION: us-east-1
   EC2_INSTANCE_ID: i-0671beccbd2630a
-
 permissions:
   id-token: write
   contents: read
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -20,28 +16,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Verify AWS CLI installation
-        run: aws --version
-
       - name: Configure AWS credentials
         run: |
-          echo "Configuring AWS credentials using GitHub Secrets"
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ${{ env.AWS_REGION }}
-
-      - name: Verify AWS credentials from configured AWS CLI
-        run: aws sts get-caller-identity
 
       - name: Get instance public IP
         id: get-instance-ip
         run: |
           PUBLIC_IP=$(aws ec2 describe-instances \
-            --instance-id "i-0671bebccbdd2630a" \
+            --instance-id ${{ env.EC2_INSTANCE_ID }} \
             --query 'Reservations[*].Instances[*].[PublicIpAddress]' \
             --output text)
           echo "PUBLIC_IP=${PUBLIC_IP}" >> $GITHUB_ENV
-          echo "public_ip=${PUBLIC_IP}"
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
@@ -50,18 +38,29 @@ jobs:
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # Set up application directory and clone repository
-            mkdir -p /home/ubuntu/app
-            git clone https://github.com/PrateekAnand3101/Django-website /home/ubuntu/app
+            # Navigate to app directory
+            cd /home/ubuntu/app || mkdir -p /home/ubuntu/app
 
-            # Build and run Docker container
-            cd /home/ubuntu/app
-            docker build -t django-website .
+            # Pull latest changes if repo exists, clone if it doesn't
+            if [ -d .git ]; then
+              git fetch --all
+              git reset --hard origin/main
+            else
+              git clone https://github.com/PrateekAnand3101/Django-website .
+            fi
+
+            # Stop and remove existing container
             docker stop django-website || true
             docker rm django-website || true
-            docker run -d --name django-website -p 8000:8000 django-website
 
-      - name: Clean up
-        run: |
-          docker stop django-website || true
-          docker rm django-website || true
+            # Remove old image to force rebuild
+            docker rmi django-website || true
+
+            # Build with no-cache to ensure fresh build
+            docker build --no-cache -t django-website .
+
+            # Run new container
+            docker run -d --name django-website \
+              -p 8000:8000 \
+              --restart unless-stopped \
+              django-website
